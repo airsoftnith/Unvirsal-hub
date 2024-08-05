@@ -1,0 +1,190 @@
+mm2 esp
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local localPlayer = Players.LocalPlayer
+
+-- Function to check if the player has a specific tool
+local function hasTool(player, toolName)
+    local character = player.Character
+    if character then
+        for _, tool in ipairs(character:GetChildren()) do
+            if tool:IsA("Tool") and tool.Name == toolName then
+                return true
+            end
+        end
+        local backpack = player:FindFirstChildOfClass("Backpack")
+        if backpack then
+            for _, tool in ipairs(backpack:GetChildren()) do
+                if tool:IsA("Tool") and tool.Name == toolName then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+-- Function to add highlights and username label to a character based on the player's tools
+local function addHighlightAndLabel(player, character)
+    -- Check if the character already has a highlight
+    local existingHighlight = character:FindFirstChild("Highlight")
+    local existingBillboard = character:FindFirstChild("UsernameLabel")
+    
+    if existingHighlight then
+        existingHighlight:Destroy()
+    end
+    
+    if existingBillboard then
+        existingBillboard:Destroy()
+    end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "Highlight"
+    highlight.Parent = character
+
+    if hasTool(player, "Knife") then
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Red fill color
+        highlight.OutlineColor = Color3.fromRGB(255, 0, 0) -- Red outline color
+
+        -- Create BillboardGui for username label
+        local billboardGui = Instance.new("BillboardGui")
+        billboardGui.Name = "UsernameLabel"
+        billboardGui.Parent = character
+        billboardGui.Adornee = character:FindFirstChild("Head")
+        billboardGui.Size = UDim2.new(0, 100, 0, 50)
+        billboardGui.StudsOffset = Vector3.new(0, 2, 0)
+        billboardGui.AlwaysOnTop = true
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Parent = billboardGui
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Text = player.Name
+        textLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- Red text color
+        textLabel.TextScaled = true
+    elseif hasTool(player, "Gun") then
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.FillColor = Color3.fromRGB(0, 0, 255) -- Blue fill color
+        highlight.OutlineColor = Color3.fromRGB(0, 0, 255) -- Blue outline color
+    elseif hasTool(player, "DroppedGun") then
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.FillColor = Color3.fromRGB(255, 255, 0) -- Yellow fill color
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 0) -- Yellow outline color
+    else
+        -- Default color if player has no specific tool
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.FillColor = Color3.fromRGB(255, 255, 255) -- White fill color
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- White outline color
+    end
+end
+
+-- Function to remove highlights and username label from a character
+local function removeHighlightAndLabel(character)
+    local highlight = character:FindFirstChild("Highlight")
+    if highlight then
+        highlight:Destroy()
+    end
+
+    local billboardGui = character:FindFirstChild("UsernameLabel")
+    if billboardGui then
+        billboardGui:Destroy()
+    end
+end
+
+-- Function to refresh highlights and labels for all players' characters except the local player
+local function refreshHighlightsAndLabels()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= localPlayer then
+            local character = player.Character
+            if character then
+                -- Remove existing highlight and label
+                removeHighlightAndLabel(character)
+                -- Add new highlight and label
+                addHighlightAndLabel(player, character)
+            end
+        end
+    end
+end
+
+-- Refresh highlights and labels every 1 second
+spawn(function()
+    while true do
+        refreshHighlightsAndLabels()
+        wait(1)
+    end
+end)
+
+-- Add highlights and labels to new players
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        if player ~= localPlayer then
+            addHighlightAndLabel(player, character)
+        end
+    end)
+end)
+
+-- Remove highlights and labels from players who leave
+Players.PlayerRemoving:Connect(function(player)
+    if player ~= localPlayer then
+        local character = player.Character
+        if character then
+            removeHighlightAndLabel(character)
+        end
+    end
+end)
+
+-- Update highlights and labels on character respawn
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        if player ~= localPlayer then
+            addHighlightAndLabel(player, character)
+        end
+    end)
+end)
+
+-- Function to highlight the dropped gun in green
+local function highlightDroppedGun(tool)
+    local highlight = tool:FindFirstChild("Highlight")
+    if not highlight then
+        highlight = Instance.new("Highlight")
+        highlight.Name = "Highlight"
+        highlight.Parent = tool
+    end
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Green fill color
+    highlight.OutlineColor = Color3.fromRGB(0, 255, 0) -- Green outline color
+end
+
+-- Function to remove highlight from the dropped gun
+local function removeDroppedGunHighlight(tool)
+    local highlight = tool:FindFirstChild("Highlight")
+    if highlight then
+        highlight:Destroy()
+    end
+end
+
+-- Detect when the gun is dropped and picked up
+local function monitorDroppedGun()
+    while true do
+        for _, tool in ipairs(Workspace:GetChildren()) do
+            if tool:IsA("Tool") and tool.Name == "Gun" then
+                tool.Name = "DroppedGun"
+                highlightDroppedGun(tool)
+            elseif tool:IsA("Tool") and tool.Name == "DroppedGun" then
+                highlightDroppedGun(tool)
+            end
+        end
+        wait(1)
+    end
+end
+
+-- Start monitoring for the dropped gun
+spawn(monitorDroppedGun)
